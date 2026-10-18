@@ -20,6 +20,10 @@
      <!-- Student commentary here -->
      ```
 4. **Brief Workflow Compliance**: Split once $\rightarrow$ perform all EDA and model comparisons via Cross-Validation strictly inside the training set $\rightarrow$ state CV metric before selecting best model $\rightarrow$ touch test set once $\rightarrow$ refit on full dataset.
+5. **Git Commit Co-Author Requirement**: Whenever creating git commits, always include Antigravity as a co-author using the standard trailer:
+   ```
+   Co-authored-by: Antigravity <antigravity-agent@users.noreply.github.com>
+   ```
 
 ---
 
