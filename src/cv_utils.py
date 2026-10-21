@@ -1,25 +1,45 @@
 """
 Shared Cross-Validation & Pipeline Utilities for DSA211 Project
 Strictly follows guidelines in docs/project_cv_workflow.html:
-- Fixed KFold splitter (k=10, shuffle=True, random_state=2026).
+- Expanding-window time-series splitter: one validation fold per calendar month
+  (Feb 2012 - Sep 2012, k = 8), each trained on all earlier months.
 - Standard evaluation metrics: Count-scale MSE and RMSE with Standard Error (SE = SD / sqrt(k)).
 - Log-normal back-transformation with variance correction: exp(log_pred + sigma^2 / 2).
 """
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 
 RANDOM_STATE = 2026
-N_SPLITS = 10
+FIRST_VAL_MONTH = '2012-02'
+LAST_VAL_MONTH = '2012-09'
 
-def get_cv_splitter(n_splits=N_SPLITS, random_state=RANDOM_STATE):
-    """Returns the shared KFold splitter for all candidate models."""
-    return KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+class ExpandingWindowSplit:
+    """
+    Expanding-window CV over calendar months. For each validation month m,
+    trains on every row dated before m and validates on the rows in m.
+    Row positions follow `dates`, so X passed to split() must be in the same row order.
+    Works anywhere scikit-learn accepts a cv object (cross_val_score, GridSearchCV).
+    """
+
+    def __init__(self, dates, first_val_month=FIRST_VAL_MONTH, last_val_month=LAST_VAL_MONTH):
+        self.months = pd.to_datetime(pd.Series(dates)).dt.to_period('M').to_numpy()
+        first, last = pd.Period(first_val_month, 'M'), pd.Period(last_val_month, 'M')
+        self.val_months = [m for m in sorted(set(self.months)) if first <= m <= last]
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return len(self.val_months)
+
+    def split(self, X, y=None, groups=None):
+        if len(X) != len(self.months):
+            raise ValueError(f"X has {len(X)} rows but the splitter was built on {len(self.months)} dates")
+        for m in self.val_months:
+            yield np.flatnonzero(self.months < m), np.flatnonzero(self.months == m)
+
+def get_cv_splitter(dates):
+    """Returns the shared expanding-window splitter (k = 8) for all candidate models."""
+    return ExpandingWindowSplit(dates)
 
 def back_transform_preds(log_preds, resid_variance):
     """
@@ -28,9 +48,10 @@ def back_transform_preds(log_preds, resid_variance):
     """
     return np.exp(log_preds + resid_variance / 2.0)
 
-def evaluate_cv_model(estimator, X, y, cv=None, is_log_target=False):
+def evaluate_cv_model(estimator, X, y, cv, is_log_target=False):
     """
     Evaluates an estimator or Pipeline across cross-validation folds.
+    cv is the shared splitter from get_cv_splitter(dates), built on the same rows as X.
     If is_log_target is True, fits on log(y) and back-transforms fold predictions
     before computing count-scale metrics.
     
@@ -43,9 +64,6 @@ def evaluate_cv_model(estimator, X, y, cv=None, is_log_target=False):
       - 'se_rmse': standard error of RMSE across folds
       - 'mean_mae': mean MAE across folds
     """
-    if cv is None:
-        cv = get_cv_splitter()
-        
     fold_mse = []
     fold_rmse = []
     fold_mae = []
