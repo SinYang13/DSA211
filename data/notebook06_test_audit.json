@@ -1,0 +1,13 @@
+{
+  "model": "Lasso m4 (min)",
+  "n_test": 1736,
+  "test_mse": 6039.506786725814,
+  "test_rmse": 77.71426372761833,
+  "test_mae": 47.5902419911354,
+  "test_r2": 0.829154888560546,
+  "baseline_mse": 35583.19099988075,
+  "relative_baseline_gain": 0.8302707931184121,
+  "within_cv_band": true,
+  "beats_baseline": true,
+  "audit_passed": true
+}
