@@ -41,7 +41,7 @@
     - **Training Set**: 2011-01-01 to 2012-09-30 ($N = 15,211$, 87.5%)
     - **Holdout Test Set**: 2012-10-01 to 2012-12-31 ($N = 2,168$, 12.5%; `SPLIT_DATE` in `src/data_utils.py`)
     - Moved from the original 90/10 cut (2012-10-19) so the holdout starts on a month boundary. The new holdout contains the old one, which had already been scored once (test RMSE 77.71); CV results and the selected model are unchanged.
-- **Cross-Validation Strategy (group decision, setup B)**: Expanding-window time-series CV, not shuffled `KFold`. One validation fold per calendar month, Feb 2012 – Sep 2012 ($k = 8$); each fold trains on all earlier months. The first training window (Jan 2011 – Jan 2012) covers all 12 months and some 2012 data so `mnth` dummies and `yr` are identifiable. The last validation month ends at the split, so every training row is used in CV. Implemented as `ExpandingWindowSplit` in `src/cv_utils.py`; drawn by `src/plot_cv_split.py` (`figures/07_cv_split_scheme.png`).
+- **Cross-Validation Strategy (group decision, setup B)**: Expanding-window time-series CV, not shuffled `KFold`. One validation fold per calendar month, Feb 2012 – Sep 2012 ($k = 8$); each fold trains on all earlier months. The first training window (Jan 2011 – Jan 2012) covers all 12 months and some 2012 data so `mnth` dummies and `yr` are identifiable. The last validation month ends at the split, so every training row is used in CV. Implemented as `ExpandingWindowSplit` in `src/cv_utils.py`; drawn in Notebook 00 (`figures/07_cv_split_scheme.png`).
   - **Rationale (split)**: Adjacent hours exhibit strong temporal autocorrelation ($\rho_1 \approx 0.88$, $\rho_{24} \approx 0.70$). Random splitting causes data leakage and overly optimistic test error.
 
 ---
@@ -71,6 +71,7 @@
 - **Model ladder**: M1 base OLS (Notebook 03) → M2–M4 refinement rungs, one change each (log target, polynomial terms, interactions; Notebook 04) → Ridge / LASSO (Notebook 05) → selection & single test score (Notebook 06). All rungs are scored on the shared CV folds.
 - `notebooks/00 Train Test Split.ipynb`:
   - Loads the raw dataset, performs the chronological split once, and writes `data/train_clean.csv` and `data/test_locked.csv`.
+  - Plots the holdout and the shared CV folds from the in-memory split (`figures/07_cv_split_scheme.png`).
 - `notebooks/01 EDA.ipynb`:
   - Full EDA on the training set only, starting with the data quality audit (schema, missingness, duplicates, `casual + registered == cnt`, timestamp coverage).
   - Interpretations authored by Kok Wai Ying and Lee Sin Yang.
@@ -85,7 +86,6 @@
 - `notebooks/06 Model Selection and Scoring.ipynb` (complete, Samuel Teo Yuzhen): CV comparison of 12 candidates, winner LASSO M4 at $\lambda_{\min}$ (CV RMSE 110.72), single test audit (RMSE 77.63, $R^2$ 0.852, passed), full-data refit. A test-access guard and result cache in `data/notebook06_*` prevent rescoring; delete `notebook06_completed_run.pkl`, `notebook06_test_access_started.json` and `notebook06_selection_frozen.json` only when the split or winner legitimately changes.
 - `src/data_utils.py`: Shared data module: split date (`SPLIT_DATE`), `load_raw()`, `chronological_split()`, `save_split()`, `load_train()`, `load_train_base()`, `load_test()`, `add_readable_units()`.
 - `src/cv_utils.py`: Reusable module implementing shared expanding-window CV splitter (`ExpandingWindowSplit`, `get_cv_splitter(dates)`, $k=8$ monthly folds), count-scale evaluation function with standard error formula, and log-normal back-transformation.
-- `src/plot_cv_split.py`: Draws the holdout and CV folds from the real splitter into `figures/07_cv_split_scheme.png`.
 - `figures/`:
   - 18 generated visualization assets.
 - `docs/`:
