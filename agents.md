@@ -1,6 +1,6 @@
 # AGENTS.md - Agent Persistent Memory & Project Context
 
-> **Last Updated**: 2026-10-07  
+> **Last Updated**: 2026-11-08  
 > **Course**: DSA211  
 > **Topic**: Topic 1 — Diagnosing and Remedying Nonlinearity in Bike-Sharing Demand Models  
 > **Group 2**: Kok Wai Ying, Lee Sin Yang, Lim Wei Lun Marcus, Samuel Teo Yuzhen, Tee Jing Yuan  
@@ -35,12 +35,13 @@
 - **Component Variables (Dropped from Features)**:
   - `casual`, `registered` (Sum exactly to `cnt`; dropped to prevent target leakage, though examined in EDA)
   - `instant`, `dteday` (Row index and date string; redundant with temporal features)
-  - `atemp` (Feeling temperature; excluded due to near-perfect collinearity with `temp`, $r = 0.9873$, $\text{VIF} > 300$)
+  - `atemp` (Feeling temperature; excluded due to near-perfect collinearity with `temp`, $r = 0.9873$, $\text{VIF} \approx 42$)
 - **Train / Test Split Strategy**:
-  - **Chronological Holdout**:
-    - **Training Set**: 2011-01-01 to 2012-10-18 ($N = 15,643$, 90.0%)
-    - **Holdout Test Set**: 2012-10-19 to 2012-12-31 ($N = 1,736$, 10.0% — final 10% of rows held out; `SPLIT_DATE` in `src/data_utils.py`)
-- **Cross-Validation Strategy (group decision, setup B)**: Expanding-window time-series CV, not shuffled `KFold`. One validation fold per calendar month, Feb 2012 – Sep 2012 ($k = 8$); each fold trains on all earlier months. The first training window (Jan 2011 – Jan 2012) covers all 12 months and some 2012 data so `mnth` dummies and `yr` are identifiable. Oct 1–18, 2012 (432 rows) is used only for the refit on all training data. Implemented as `ExpandingWindowSplit` in `src/cv_utils.py`.
+  - **Chronological Holdout (month-aligned, group decision 2026-11-08)**:
+    - **Training Set**: 2011-01-01 to 2012-09-30 ($N = 15,211$, 87.5%)
+    - **Holdout Test Set**: 2012-10-01 to 2012-12-31 ($N = 2,168$, 12.5%; `SPLIT_DATE` in `src/data_utils.py`)
+    - Moved from the original 90/10 cut (2012-10-19) so the holdout starts on a month boundary. The new holdout contains the old one, which had already been scored once (test RMSE 77.71); CV results and the selected model are unchanged.
+- **Cross-Validation Strategy (group decision, setup B)**: Expanding-window time-series CV, not shuffled `KFold`. One validation fold per calendar month, Feb 2012 – Sep 2012 ($k = 8$); each fold trains on all earlier months. The first training window (Jan 2011 – Jan 2012) covers all 12 months and some 2012 data so `mnth` dummies and `yr` are identifiable. The last validation month ends at the split, so every training row is used in CV. Implemented as `ExpandingWindowSplit` in `src/cv_utils.py`; drawn by `src/plot_cv_split.py` (`figures/07_cv_split_scheme.png`).
   - **Rationale (split)**: Adjacent hours exhibit strong temporal autocorrelation ($\rho_1 \approx 0.88$, $\rho_{24} \approx 0.70$). Random splitting causes data leakage and overly optimistic test error.
 
 ---
@@ -51,8 +52,8 @@
 | :--- | :--- | :--- |
 | **1. Modelling Workflow** | Grader Feedback #1 | 5-step workflow planned: train/test split, CV inside train, single test touch, full refit. |
 | **2. Categorical Encodings** | Grader Feedback #2 | `hr`, `season`, `mnth`, `weathersit` are integer codes. Group decision: dummy encoding is part of the base model (Notebook 02 exports dummy-encoded `hr`, `mnth`, `weekday`, `weathersit`). Refinement focuses on interactions, polynomial terms, and log scaling. |
-| **3. Time-based Split** | Grader Feedback #3 | Implemented: final 10% holdout (2012-10-19 onward) and expanding-window monthly CV. All EDA and CV strictly inside training set. |
-| **4. Multicollinearity & VIF** | Grader Feedback #4 | `season` is a deterministic function of `mnth` ($\text{VIF}_{\text{season}}=26.0$, $\text{VIF}_{\text{mnth}}=17.8$). Include one, not both. `atemp` dropped. |
+| **3. Time-based Split** | Grader Feedback #3 | Implemented: month-aligned holdout (2012-10-01 onward) and expanding-window monthly CV. All EDA and CV strictly inside training set. |
+| **4. Multicollinearity & VIF** | Grader Feedback #4 | `season` is a deterministic function of `mnth` ($\text{VIF}_{\text{season}} \approx 4.3$, $\text{VIF}_{\text{mnth}} \approx 4.0$; the redundancy, not the VIF, is the reason to keep one). Include one, not both. `atemp` dropped ($\text{VIF} \approx 42$). VIF is the centred (with-intercept) version, which statsmodels 0.15 computes by default; older versions gave uncentred values (e.g. > 300 for `atemp`). |
 | **5. Influence Adjudication** | Grader Feedback #5 | Adjudicate flagged outliers by grouping by date and cross-referencing known events (Hurricane Sandy 2012-10-29, blizzards, cherry blossom festival). |
 | **6. Partial F-tests vs. CV** | Grader Feedback #6 | Feature selection & polynomial decisions must be validated via CV on the training set. |
 | **7. Added-Variable Plots** | Grader Feedback #7 | Used for continuous predictors (`temp`, `hum`, `windspeed`) only; not for categorical `weathersit`. |
@@ -63,6 +64,8 @@
 
 ## 4. Current Repository State & File Inventory
 
+- **Environment**: pinned in `requirements.txt` (numpy 2.5.4, pandas 3.1.0, scipy 1.17.1, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, seaborn 0.13.2). scipy 1.18.1 breaks `stats.kstest` in Notebook 01; statsmodels < 0.15 rejects `result_object` in Notebook 03 and gives uncentred VIF. All notebooks run end to end in about 3 minutes with `python -m jupyter nbconvert --to notebook --execute --inplace`.
+- **LASSO speed**: `Lasso(..., precompute=True)` in Notebooks 05 and 06. Without it, small-alpha fits take 30–60 s each and Notebook 05 runs for over an hour; coefficients are identical.
 - **Data access rule**: Only Notebook 00 reads `data/hour.csv`. Notebooks 01–02 read the training set only (`load_train()`); Notebooks 03–05 read the base processed training set (`load_train_base()`). The locked test set is read once, in Notebook 06 (`load_test()`).
 - **Processing lives in notebooks, not `src`**: each notebook shows its processing step by step. `src` holds only loading, splitting, and CV/metric utilities.
 - **Model ladder**: M1 base OLS (Notebook 03) → M2–M4 refinement rungs, one change each (log target, polynomial terms, interactions; Notebook 04) → Ridge / LASSO (Notebook 05) → selection & single test score (Notebook 06). All rungs are scored on the shared CV folds.
@@ -70,27 +73,21 @@
   - Loads the raw dataset, performs the chronological split once, and writes `data/train_clean.csv` and `data/test_locked.csv`.
 - `notebooks/01 EDA.ipynb`:
   - Full EDA on the training set only, starting with the data quality audit (schema, missingness, duplicates, `casual + registered == cnt`, timestamp coverage).
-  - Stripped of all AI explanations and commentary.
-  - Contains student authoring placeholders with `**Author**: [Insert Name]`.
+  - Interpretations authored by Kok Wai Ying and Lee Sin Yang.
   - All code labeled: `*Code: Generated by AI Assistant*`.
 - `notebooks/02 Data Processing.ipynb`:
-  - Base data processing on the training set: column roles (drops `instant`, `casual`, `registered`, `atemp`, `season`; keeps `dteday` as ID), dummy-encodes `hr`, `mnth`, `weekday`, `weathersit` with fixed levels (`drop_first`), exports `data/train_base.csv` (15,643 × 51: `dteday`, `cnt`, 49 predictors; `weathersit` not pooled), shows the shared expanding-window CV folds ($k=8$).
-  - Known issue left for Notebook 03 (group decision): `workingday` is an exact linear combination of the `weekday` dummies and `holiday`, so the base design matrix is rank-deficient (50 columns incl. intercept, rank 49).
-  - Stripped of all AI explanations; contains student authoring placeholders.
-- `notebooks/03 Baseline Model.ipynb`:
-  - Skeleton notebook (ladder rung M1): OLS on the base dataset, rank/VIF check, residual diagnostics (hour × working day, added-variable plots, heteroskedasticity, negative counts), outlier adjudication, shared expanding-window CV.
-- `notebooks/04 Model Refinement.ipynb`:
-  - Skeleton notebook (ladder rungs M2–M4): log target, polynomial terms, interactions built in the notebook from the base dataset, back-transformation, shared expanding-window CV comparison.
-- `notebooks/05 Regularization Extension.ipynb`:
-  - Skeleton notebook: Building on Notebook 04, Ridge & LASSO tuning via shared expanding-window CV, sparsity analysis, shrinkage vs. non-linearity discussion.
-- `notebooks/06 Model Selection and Scoring.ipynb`:
-  - Skeleton notebook: Full CV model comparison across all candidates, winning model selection (1-SE rule / lowest mean), refit on all training data, audit pass criteria verification, single test set score, final full refit on all data.
+  - Base data processing on the training set: column roles (drops `instant`, `casual`, `registered`, `atemp`, `season`; keeps `dteday` as ID), dummy-encodes `hr`, `mnth`, `weekday`, `weathersit` with fixed levels (`drop_first`), exports `data/train_base.csv` (15,211 × 51: `dteday`, `cnt`, 49 predictors; `weathersit` not pooled), shows the shared expanding-window CV folds ($k=8$).
+  - `workingday` is an exact linear combination of the `weekday` dummies and `holiday`, so the base design matrix is rank-deficient (50 columns incl. intercept, rank 49); resolved in Notebook 03.
+  - Interpretations authored by Lee Sin Yang.
+- `notebooks/03 Baseline Model.ipynb` (complete, Kok Wai Ying): M1 OLS, rank/VIF check (drops `workingday`), residual diagnostics (hour × working day, added-variable plots, heteroskedasticity, negative counts 10.50%), outlier adjudication, shared CV (RMSE 130.86).
+- `notebooks/04 Model Refinement.ipynb` (complete, Tee Jing Yuan): M2–M4 (log target, squared weather terms, hr × workingday), back-transformation, shared CV comparison, diagnostic verification.
+- `notebooks/05 Regularization Extension.ipynb` (complete, Lim Wei Lun Marcus): Ridge & LASSO on base and M4 spaces tuned by shared CV, sparsity, shrinkage vs. non-linearity; exports `data/cv_results_05_regularization.csv`.
+- `notebooks/06 Model Selection and Scoring.ipynb` (complete, Samuel Teo Yuzhen): CV comparison of 12 candidates, winner LASSO M4 at $\lambda_{\min}$ (CV RMSE 110.72), single test audit (RMSE 77.63, $R^2$ 0.852, passed), full-data refit. A test-access guard and result cache in `data/notebook06_*` prevent rescoring; delete `notebook06_completed_run.pkl`, `notebook06_test_access_started.json` and `notebook06_selection_frozen.json` only when the split or winner legitimately changes.
 - `src/data_utils.py`: Shared data module: split date (`SPLIT_DATE`), `load_raw()`, `chronological_split()`, `save_split()`, `load_train()`, `load_train_base()`, `load_test()`, `add_readable_units()`.
 - `src/cv_utils.py`: Reusable module implementing shared expanding-window CV splitter (`ExpandingWindowSplit`, `get_cv_splitter(dates)`, $k=8$ monthly folds), count-scale evaluation function with standard error formula, and log-normal back-transformation.
-- `src/build_processing_notebook.py`: Outdated generator for `02 Data Processing.ipynb` (old layout with audit, split, and pipelines). Do not run; it would overwrite the current notebook.
-- `src/populate_notebook_skeletons.py`: Outdated generator for Notebooks 02 through 06 (pre-ladder plans). Do not run; it would overwrite the current notebooks.
+- `src/plot_cv_split.py`: Draws the holdout and CV folds from the real splitter into `figures/07_cv_split_scheme.png`.
 - `figures/`:
-  - 17 generated visualization assets.
+  - 18 generated visualization assets.
 - `docs/`:
   - `DSA211_Proposal_Group 2.pdf`: Original proposal.
   - `DSA211_Proposal_Group 2 Feedback.pdf`: Grader feedback and instructions.
@@ -100,11 +97,7 @@
 
 ## 5. Next Steps / Roadmap
 
-1. **Notebook 03: Baseline Model & Failure Diagnosis (M1)**:
-   - Fit OLS on `data/train_base.csv`, resolve the `workingday` rank deficiency, diagnose hour × working day patterns, curvature, heteroskedasticity, negative counts, catalog mistakes to fix.
-2. **Notebook 04: Model Refinement & Remedying Nonlinearity (M2–M4)**:
-   - Remedy mistakes from Notebook 03 one rung at a time (log target, polynomial terms, interactions), back-transform inside folds, compare CV scores.
-3. **Notebook 05: Regularization Extension**:
-   - Address parameter variance and collinearity from Notebook 04 via Ridge and LASSO on the expanded feature space, analyze sparsity.
-4. **Notebook 06: Model Selection and Scoring**:
-   - Apply identical Notebook 02 base processing to the test set. Compare all models on shared CV folds using 1-SE rule / lowest mean, refit winner on all training data, score once on test set, check audit pass criteria, refit on all data.
+All notebooks (00–06) are complete and run end to end on the month-aligned split.
+
+1. **Report**: acknowledge that the month-aligned holdout contains the earlier 2012-10-19 holdout, which had already been scored once.
+2. **Figures**: numbers baked into figure images were not re-checked against the month-aligned split.
