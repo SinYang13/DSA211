@@ -1,6 +1,6 @@
 """
 Shared Data Loading & Splitting Utilities for DSA211 Project
-- Single source of truth for the chronological holdout split (final 10% held out: 2012-10-19 to 2012-12-31).
+- Single source of truth for the chronological holdout split (month-aligned, 12.5% held out: 2012-10-01 to 2012-12-31).
 - Notebook 00 is the only notebook that reads the raw dataset and writes the split files.
 - Notebooks 01-05 read the training set only; the locked test set is read once in Notebook 06.
 """
@@ -16,7 +16,7 @@ TRAIN_PATH = DATA_DIR / 'train_clean.csv'
 TEST_PATH = DATA_DIR / 'test_locked.csv'
 BASE_TRAIN_PATH = DATA_DIR / 'train_base.csv'
 
-SPLIT_DATE = pd.Timestamp('2012-10-19')
+SPLIT_DATE = pd.Timestamp('2012-10-01')
 
 def _read(path):
     df = pd.read_csv(path)

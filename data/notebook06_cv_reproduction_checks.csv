@@ -1,13 +1,13 @@
 model,max_abs_MSE_difference
-M1 OLS,1.0913936421275139e-11
-M2 OLS,6.984919309616089e-10
-M3 OLS,6.402842700481415e-10
-M4 OLS,2.3646862246096134e-10
+M1 OLS,0.0
+M2 OLS,0.0
+M3 OLS,0.0
+M4 OLS,0.0
 Ridge base (min),0.0
 Ridge base (1se),0.0
 Ridge m4 (min),0.0
 Ridge m4 (1se),0.0
-Lasso base (min),3.637978807091713e-12
+Lasso base (min),0.0
 Lasso base (1se),0.0
-Lasso m4 (min),7.275957614183426e-12
-Lasso m4 (1se),1.8189894035458565e-12
+Lasso m4 (min),0.0
+Lasso m4 (1se),0.0

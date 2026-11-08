@@ -1,7 +1,7 @@
 {
   "audit_mse_band": [
-    4334.261399554224,
-    20185.19164542878
+    4334.261399554131,
+    20185.191645432657
   ],
   "base_features": [
     "hr_1",
@@ -54,9 +54,9 @@
     "hum",
     "windspeed"
   ],
-  "cv_export_sha256": "4c03ee7e58673b1099505605687b9ffe88c8c459cedb9aabeb2f6409b20eb8c4",
-  "cv_mse": 12259.7265224915,
-  "cv_rmse": 110.72364933694834,
+  "cv_export_sha256": "44c895cc922a188a5dd874a589b5684b5e9ea7ed74600f29191597e57466e724",
+  "cv_mse": 12259.726522493394,
+  "cv_rmse": 110.7236493369569,
   "design_features": [
     "hr_1",
     "hr_2",
@@ -146,17 +146,17 @@
   ],
   "metric": "count-scale mean fold MSE",
   "minimum_relative_baseline_gain": 0.0,
-  "se_mse": 3962.7325614686383,
+  "se_mse": 3962.732561469632,
   "selection_rule": "minimum_mean_mse",
-  "sigma2_training": 0.15314889830376402,
+  "sigma2_training": 0.15417765439427206,
   "specification": {
     "alpha": 0.0025118864315095794,
     "kind": "lasso",
     "log_target": true,
     "space": "m4"
   },
-  "training_mean": 187.94022885635746,
-  "training_rows": 15643,
-  "training_sha256": "a34c64619fb5c178041f651f06cb0e18092bb2c01bfe396b716b68f3331865eb",
+  "training_mean": 185.225231740188,
+  "training_rows": 15211,
+  "training_sha256": "d6892b888a55a3ab6872e83d4254b210b2ae4ad70ff3f36739f70b9179d79df8",
   "winner": "Lasso m4 (min)"
 }
