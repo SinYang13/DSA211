@@ -36,7 +36,7 @@
   - **Chronological Holdout (month-aligned, group decision 2026-11-08)**:
     - **Training Set**: 2011-01-01 to 2012-09-30 ($N = 15,211$, 87.5%)
     - **Holdout Test Set**: 2012-10-01 to 2012-12-31 ($N = 2,168$, 12.5%; `SPLIT_DATE` in `src/data_utils.py`)
-    - Moved from the original 90/10 cut (2012-10-19) so the holdout starts on a month boundary. The new holdout contains the old one, which had already been scored once (test RMSE 77.71); CV results and the selected model are unchanged.
+    - Month-aligned so the holdout starts on a month boundary.
 - **Cross-Validation Strategy (group decision, setup B)**: Expanding-window time-series CV, not shuffled `KFold`. One validation fold per calendar month, Feb 2012 – Sep 2012 ($k = 8$); each fold trains on all earlier months. The first training window (Jan 2011 – Jan 2012) covers all 12 months and some 2012 data so `mnth` dummies and `yr` are identifiable. The last validation month ends at the split, so every training row is used in CV. Implemented as `ExpandingWindowSplit` in `src/cv_utils.py`; drawn in Notebook 02 (`figures/08_expanding_window_cv.png`).
   - **Rationale (split)**: Adjacent hours exhibit strong temporal autocorrelation ($\rho_1 \approx 0.88$, $\rho_{24} \approx 0.70$). Random splitting causes data leakage and overly optimistic test error.
 
@@ -62,7 +62,7 @@
 
 - **Environment**: pinned in `requirements.txt` (numpy 2.5.4, pandas 3.1.0, scipy 1.17.1, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, seaborn 0.13.2). scipy 1.18.1 breaks `stats.kstest` in Notebook 01; statsmodels < 0.15 rejects `result_object` in Notebook 03 and gives uncentred VIF. All notebooks run end to end in about 3 minutes with `python -m jupyter nbconvert --to notebook --execute --inplace`.
 - **LASSO speed**: `Lasso(..., precompute=True)` in Notebooks 05 and 06. Without it, small-alpha fits take 30–60 s each and Notebook 05 runs for over an hour; coefficients are identical.
-- **Data access rule**: Only Notebook 00 reads `data/hour.csv`. Notebooks 01–02 read the training set only (`load_train()`); Notebooks 03–05 read the base processed training set (`load_train_base()`). The locked test set is read once, in Notebook 06 (`load_test()`).
+- **Data access rule**: Only Notebook 00 reads `data/hour.csv`. Notebooks 01–02 read the training set only (`load_train()`); Notebooks 03–05 read the base processed training set (`load_train_base()`). The locked test set is read once, in Notebook 06 (`load_test()`). Notebook 07 reads the base processed training set only.
 - **Processing lives in notebooks, not `src`**: each notebook shows its processing step by step. `src` holds only loading, splitting, and CV/metric utilities.
 - **Model ladder**: M1 base OLS (Notebook 03) → M2–M4 refinement rungs, one change each (log target, polynomial terms, interactions; Notebook 04) → Ridge / LASSO (Notebook 05) → selection & single test score (Notebook 06). All rungs are scored on the shared CV folds.
 - `notebooks/00 Train Test Split.ipynb`:
@@ -78,12 +78,13 @@
   - Interpretations authored by Lee Sin Yang.
 - `notebooks/03 Baseline Model.ipynb` (complete, Kok Wai Ying): M1 OLS, rank/VIF check (drops `holiday`, which equals weekday_1..5 - workingday, so every model from M1 to the final LASSO is full rank and `workingday` stays explicit for the hr × workingday interaction; Notebooks 04–06 use the same 48-predictor base), residual diagnostics (hour × working day, added-variable plots, heteroskedasticity, negative counts 10.50%), outlier adjudication, shared CV (RMSE 130.86).
 - `notebooks/04 Model Refinement.ipynb` (complete, Tee Jing Yuan): M2–M4 (log target, squared weather terms, hr × workingday), back-transformation, shared CV comparison, diagnostic verification.
-- `notebooks/05 Regularization Extension.ipynb` (complete, Lim Wei Lun Marcus): Ridge & LASSO on base and M4 spaces tuned by shared CV, sparsity, shrinkage vs. non-linearity; exports `data/cv_results_05_regularization.csv`.
-- `notebooks/06 Model Selection and Scoring.ipynb` (complete, Samuel Teo Yuzhen): CV comparison of 12 candidates, winner LASSO M4 at $\lambda_{\min}$ (CV RMSE 110.68), single test audit (RMSE 77.88, $R^2$ 0.851, passed), full-data refit. A test-access guard and result cache in `data/notebook06_*` prevent rescoring; delete `notebook06_completed_run.pkl`, `notebook06_test_access_started.json` and `notebook06_selection_frozen.json` only when the split or winner legitimately changes.
+- `notebooks/05 Regularization Extension.ipynb` (complete, Lim Wei Lun Marcus): Ridge & LASSO on base and M4 spaces tuned by shared CV, sparsity, shrinkage vs. non-linearity; exports `data/cv_results_05_regularization.csv`. Saves `figures/12_cv_rmse_by_candidate.png` (all 12 candidates grouped by OLS / Ridge / LASSO, with alpha, coefficients and paired gain vs the matching OLS rung, for report section 8.2) and `figures/13_lambda_cv_curves.png`. Section 6b.7 charts 6b.5 (forward-chained tuning by month) and 6b.6 (uncentred vs centred squared terms) for report section 8.4: `figures/14_tuning_optimism_and_centring.png`.
+- `notebooks/06 Model Selection and Scoring.ipynb` (complete, Samuel Teo Yuzhen): CV comparison of 12 candidates, winner LASSO M4 at $\lambda_{\min}$ (CV RMSE 110.68), single test audit (RMSE 77.88, $R^2$ 0.851, passed), full-data refit. The CV comparison chart (SE bars, winner highlighted) is saved to `figures/15_cv_comparison_selected.png`. Section 7 plots test-period daily means (actual vs cached predictions, Oct–Dec 2012) with one 95% interval from the empirical out-of-fold daily log ratios on the training CV folds (0.56x to 1.29x; 89% of test days inside) (`figures/16_test_predictions_fan.png`; interpretation cell assigned to Lee Sin Yang); reruns load the cache and do not reopen the test set. A test-access guard and result cache in `data/notebook06_*` prevent rescoring; delete `notebook06_completed_run.pkl`, `notebook06_test_access_started.json` and `notebook06_selection_frozen.json` only when the split or winner legitimately changes.
+- `notebooks/07 Sensitivity Polynomial Degree.ipynb` (post-hoc, interpretations by Lee Sin Yang): added **after** Notebook 06 scored the test set; training set only, test set not read, Notebook 06 selection and test score unchanged. Five sections, three interpretation cells: (1) reproduces the Notebook 05 fold MSEs for OLS M4 and the selected LASSO M4, checks the orthogonal basis; (2) per-variable OLS degree search (1–4 each for `temp`, `hum`, `windspeed`, 64 combinations, heatmap); (3) Ridge / LASSO with weather terms up to degree 4 (Notebook 05 grids) as raw powers and as orthogonal polynomials (QR, built on each training fold; unchanged by shifting or rescaling), charted in `figures/17_degree4_raw_vs_orthogonal.png`; (4) forward-chained $\lambda$ tuning (reproduces Notebook 05 6b.5 for LASSO M4); (5) out-of-fold residuals (8 CV validation months) binned by temperature, humidity and wind speed, selected LASSO M4 vs LASSO M4 with orthogonal (4,4,4) weather terms (`figures/11_weather_residuals_oof.png`). Centred and shifted powers and other exploratory runs (cubic temp, fixed-$\alpha$ LASSO degree grid) were tried in scratch work but are not in the notebook; the report should describe the full exploration. The report states that this was found only after the test set was scored.
 - `src/data_utils.py`: Shared data module: split date (`SPLIT_DATE`), `load_raw()`, `chronological_split()`, `save_split()`, `load_train()`, `load_train_base()`, `load_test()`, `add_readable_units()`.
 - `src/cv_utils.py`: Reusable module implementing shared expanding-window CV splitter (`ExpandingWindowSplit`, `get_cv_splitter(dates)`, $k=8$ monthly folds), count-scale evaluation function with standard error formula, and log-normal back-transformation.
 - `figures/`:
-  - 19 generated visualization assets.
+  - 28 generated visualization assets.
 - `docs/`:
   - `DSA211_Proposal_Group 2.pdf`: Original proposal.
   - `DSA211_Proposal_Group 2 Feedback.pdf`: Grader feedback and instructions.
@@ -93,7 +94,7 @@
 
 ## 5. Next Steps / Roadmap
 
-All notebooks (00–06) are complete and run end to end on the month-aligned split.
+All notebooks (00–07) are complete and run end to end on the month-aligned split.
 
-1. **Report**: acknowledge that the month-aligned holdout contains the earlier 2012-10-19 holdout, which had already been scored once.
-2. **Figures**: numbers baked into figure images were not re-checked against the month-aligned split.
+1. **Figures**: numbers baked into figure images were not re-checked against the month-aligned split.
+2. **Report**: add the Notebook 07 post-hoc sensitivity analysis, stating it was done after the test set was scored (group-authored).
