@@ -1,12 +1,12 @@
 {
   "model": "Lasso m4 (min)",
   "n_test": 2168,
-  "test_mse": 6027.0298648120415,
-  "test_rmse": 77.63394788887166,
-  "test_mae": 47.76313489366072,
-  "test_r2": 0.8516857916525736,
+  "test_mse": 6064.99463632161,
+  "test_rmse": 77.87807545337526,
+  "test_mae": 47.86463228581062,
+  "test_r2": 0.850751547894399,
   "baseline_mse": 41790.94811794005,
-  "relative_baseline_gain": 0.855781451815764,
+  "relative_baseline_gain": 0.854873006967793,
   "within_cv_band": true,
   "beats_baseline": true,
   "audit_passed": true

@@ -1,7 +1,7 @@
 {
   "audit_mse_band": [
-    4334.261399554131,
-    20185.191645432657
+    4326.919239281901,
+    20175.11223866709
   ],
   "base_features": [
     "hr_1",
@@ -48,15 +48,14 @@
     "weathersit_3",
     "weathersit_4",
     "yr",
-    "holiday",
     "workingday",
     "temp",
     "hum",
     "windspeed"
   ],
-  "cv_export_sha256": "44c895cc922a188a5dd874a589b5684b5e9ea7ed74600f29191597e57466e724",
-  "cv_mse": 12259.726522493394,
-  "cv_rmse": 110.7236493369569,
+  "cv_export_sha256": "66470800c9392162866b099850a916bbe1d95e3b54e573ebefe791683c4f8602",
+  "cv_mse": 12251.015738974496,
+  "cv_rmse": 110.68430665173133,
   "design_features": [
     "hr_1",
     "hr_2",
@@ -102,7 +101,6 @@
     "weathersit_3",
     "weathersit_4",
     "yr",
-    "holiday",
     "workingday",
     "temp",
     "hum",
@@ -146,9 +144,9 @@
   ],
   "metric": "count-scale mean fold MSE",
   "minimum_relative_baseline_gain": 0.0,
-  "se_mse": 3962.732561469632,
+  "se_mse": 3962.0482498462975,
   "selection_rule": "minimum_mean_mse",
-  "sigma2_training": 0.15417765439427206,
+  "sigma2_training": 0.15420818181246884,
   "specification": {
     "alpha": 0.0025118864315095794,
     "kind": "lasso",
